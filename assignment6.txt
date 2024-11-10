@@ -1,0 +1,117 @@
+clear all;
+close all;
+x = input('Enter binary input information (0s and 1s): '); % Binary input
+N = length(x);  % Length of the input signal
+Tb = 0.0010;     % Bit duration
+disp('Binary input information at transmitter:');   
+disp(x);
+
+nb = 100;  % Number of samples per bit (to make the signal continuous)
+digit = []; % Initialize the digit signal array
+
+% Generate the digit signal (rectangular pulse for each bit)
+for n = 1:N
+    if x(n) == 1
+        sig = ones(1, nb);  % Generate a signal for '1'
+    else
+        sig = zeros(1, nb); % Generate a signal for '0'
+    end
+    digit = [digit sig];  % Append the signal to the array
+end
+
+% Time vector for plotting
+t1 = Tb/nb:Tb/nb:nb*N*(Tb/nb);
+
+% Plot the digital input signal
+figure('Name', 'BPSK Modulation and Demodulation', 'NumberTitle', 'off');
+subplot(3,1,1);
+plot(t1, digit, 'LineWidth', 1.5);
+grid on;
+axis([0 Tb*N -0.5 1.5]);
+xlabel('Time (sec)');
+ylabel('Amplitude (Volts)');
+title('Digital Input Signal');
+
+% BPSK Modulation parameters
+Ac = 5;      % Carrier amplitude
+br = 1/Tb;   % Bit rate (inverse of bit duration)
+Fc = br * 10; % Carrier frequency (10 times the bit rate)
+Pc1 = 0;     % Phase for bit 1
+Pc2 = pi/2;  % Phase for bit 0
+
+% Initialize the modulated signal
+mod = [];
+
+% Modulation: BPSK modulation for each bit
+for i = 1:N
+    t2 = Tb/nb:Tb/nb:Tb;  % Time vector for one bit duration
+    if x(i) == 1
+        y = Ac * cos(2*pi*Fc*t2 + Pc1); % Modulated signal for bit 1
+    else
+        y = Ac * cos(2*pi*Fc*t2 + Pc2); % Modulated signal for bit 0
+    end
+    mod = [mod y]; % Append the modulated signal to the array
+end
+
+% Time vector for modulated signal
+t3 = Tb/nb:Tb/nb:Tb*N;
+
+% Plot the modulated BPSK signal
+subplot(3,1,2);
+plot(t3, mod);
+xlabel('Time (sec)');
+ylabel('Amplitude (Volts)');
+title('BPSK Modulation Signal');
+
+% Add noise to the signal (optional step)
+h = 1;    % Signal scaling factor
+w = 0.5;  % Noise amplitude
+y = h * mod + w * randn(1, length(mod)); % Add Gaussian noise
+
+% Demodulation process
+demod = []; % Initialize demodulated signal
+s = length(t2); % Number of samples per bit
+
+% Perform demodulation: compare received signal with the carrier cosine
+for n = 1:s:length(y) - s
+    t4 = Tb/nb:Tb/nb:Tb; % Time vector for one bit duration
+    c = cos(2*pi*Fc*t4);  % Carrier signal for correlation
+    r = c .* y(n:n+s-1);  % Multiply the received signal with the carrier
+    z = sum(r);  % Perform integration over one bit period
+    
+    % Decision rule: compare with a threshold (0 for bit 0, 1 for bit 1)
+    if z > 0
+        a = 1;  % Bit '1' detected
+    else
+        a = 0;  % Bit '0' detected
+    end
+    
+    demod = [demod a]; % Append the detected bit
+end
+
+% Display the demodulated binary information at the receiver
+disp('Demodulated Binary Information at Receiver:');
+disp(demod);
+
+% Reconstruct the demodulated signal for plotting
+digit = [];
+for n = 1:length(demod)
+    if demod(n) == 1
+        sig = ones(1, nb);  % Generate signal for '1'
+    else
+        sig = zeros(1, nb); % Generate signal for '0'
+    end
+    digit = [digit sig];  % Append the signal to the array
+end
+
+% Time vector for demodulated signal
+t5 = Tb/nb:Tb/nb:nb*length(demod)*(Tb/nb);
+
+% Plot the demodulated BPSK signal
+subplot(3,1,3);
+plot(t5, digit, 'LineWidth', 2.5);
+grid on;
+axis([0 Tb*length(demod) -0.5 1.5]);
+xlabel('Time (sec)');
+ylabel('Amplitude (Volts)');
+title('BPSK Demodulated Signal');
